@@ -2,6 +2,7 @@
 #include <Adafruit_ADS1X15.h>
 #include <LiquidCrystal_I2C.h>
 
+
 LiquidCrystal_I2C lcd(0x27, 16, 2);  // set the LCD address to 0x27 for a 16 chars and 2 line display
 
 Adafruit_ADS1015 ads;  // Create an ADS1015 object
@@ -12,6 +13,7 @@ Adafruit_ADS1015 ads;  // Create an ADS1015 object
 bool fillingStatus = false;
 int16_t raw = 0;
 uint16_t base = 0;
+uint8_t toFill = 1;
 
 void setup(void) {
   Serial.begin(9600);
@@ -46,30 +48,63 @@ void loop(void) {
 
 
   if (!digitalRead(pbPin)) {
-    fillingStatus = true;
+    uint32_t pb_count = 0;
     delay(100);
+    while (!digitalRead(pbPin)) {
+      pb_count++;
+      delay(100);
+      if (pb_count > 30) {
+        fillingStatus = true;
+        break;
+      }
+    }
+
+    if (pb_count < 15) {
+      toFill++;
+      if (toFill > 3) {
+        toFill = 1;
+      }
+    }
   }
 
   if (fillingStatus) {
+    delay(300);
     relay_Activate();
     lcd.setCursor(0, 0);
     lcd.print("Filling...      ");
-
-    delay(300);
-  } else {
+    delay(95000 * toFill);
     relay_Deactivate();
+    fillingStatus = false;
+  } else {
     lcd.setCursor(0, 0);
     lcd.print("Press to Fill");
   }
 
-  if (raw >= (base + 1) || raw <= (base - 1)) {
-    fillingStatus = false;
-  }
+  // if (fillingStatus) {
+  //   relay_Activate();
+  //   lcd.setCursor(0, 0);
+  //   lcd.print("Filling...      ");
+
+  //   delay(300);
+  // } else {
+  //   relay_Deactivate();
+  //   lcd.setCursor(0, 0);
+  //   lcd.print("Press to Fill");
+  // }
+
+  // if (raw >= (base + 1) || raw <= (base - 1)) {
+  //   fillingStatus = false;
+  // }
+
+  // lcd.setCursor(0, 1);
+  // lcd.print(raw);
+  // lcd.setCursor(12, 1);
+  // lcd.print(base);
 
   lcd.setCursor(0, 1);
-  lcd.print(raw);
-  lcd.setCursor(12, 1);
-  lcd.print(base);
+  lcd.print("To Fill:");
+  lcd.setCursor(8, 1);
+  lcd.print(toFill);
 }
 
 void relay_Activate() {
